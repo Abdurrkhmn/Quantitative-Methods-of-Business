@@ -1,0 +1,240 @@
+---
+title: "QMBR Seminar 3"
+author: "Instructor: E.D. Starshov (e.starshov@gsom.spbu.ru)"
+topics: "Topic 3. Correlation and regression analysis."
+data: "Exam Anxiety 2022.sav"
+---
+
+# Quantitative methods of business research. Seminar 3. #
+
+The goal of the third seminar is to deepen knowledge of correlation and regression analysis using R. 
+
+Let’s look at the example data relating to exam anxiety: a psychologist was interested in the effects of exam stress and revision on exam performance. She had devised and validated a questionnaire to assess state anxiety relating to exams. This scale produced a measure of anxiety scored out of 100. Anxiety was measured before an exam, and the percentage mark of each student on the exam was used to assess the exam performance. She also measured the number of hours spent revising.
+
+For the seminar we will follow the script below, and it will be the same for the group home task (although the datafile will be different).
+
+```{r warning=FALSE}
+# Activate packages
+library(haven) # Loading SPSS files
+library(psych) # describe
+library(car) # qqPlot
+library(olsrr) # ols_vif_tol
+library(corrplot) #cor.plot
+library(labelled) # label
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# Set working directory
+setwd("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/Seminar 3")
+
+# Load the data
+anxiety <- read_sav("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/data/anxiety.sav") # Specify your own path
+
+# Removing potential outliers
+anxietyClean <- anxiety[anxiety$Anxiety >= 10, ]
+anxietyClean <- anxietyClean[anxietyClean$Revise <= 90, ]
+```
+
+
+# Q1. Regression output
+
+```{r}
+# Reconstruct the scatter plot of Exam and Anxiety
+plot(Exam ~ Anxiety, data = anxietyClean, main = "Scatter plot of exam score and anxiety level")
+abline(lm(Exam ~ Anxiety, data = anxietyClean), col = "red")
+plot(Exam ~ Revise, data = anxietyClean, main = "Scatter plot of exam score and anxiety level")
+abline(lm(Exam ~ Revise, data = anxietyClean), col = "red")
+```
+
+
+```{r}
+# Singular linear regression model
+model1 <- lm(Exam ~ Anxiety, data = anxietyClean)
+
+# Model 1 summary
+summary(model1)
+```
+
+Triple "s" rule:
+1. Sign (-) (+)
+2. Size (0.57) (98.46)
+3. Significance (***) (***)
+
+
+### Adjusted R2 shows if the added variables contribute well to the model
+### More info at: https://corporatefinanceinstitute.com/resources/data-science/adjusted-r-squared/ 
+
+
+# Q2. Build a multivariate regression model with Exam as the output and Revise and Anxiety as regressors. What can you say about the quality of the second model and its coefficients?
+
+```{r}
+# Multivariate linear regression model
+model2 <- lm(Exam ~ Anxiety + Revise, data = anxietyClean)
+
+# Model 2 summary
+summary(model2)
+```
+
+### g)	How much additional variance is explained by the second model comparing with the first one? => Do I simply substract R2-1 out of R2-2? YES
+
+
+```{r}
+# Check standardized coefficients
+## Remove scientific notation
+options(scipen = 20)
+
+## Standardize each variable and fit regression model
+model2_std <- lm(scale(Exam) ~ scale(Anxiety) + scale(Revise), data = anxietyClean)
+
+## View model summary
+summary(model2_std) ### Don't look at p-values
+```
+
+
+```{r}
+# Change statistics (nested model test)
+
+anova(model1, model2)
+
+### Why ANOVA? https://www.edanz.com/blog/anova-explained#ANOVA_and
+```
+
+
+
+# Q3. Check the second model for the potential sources of bias.
+
+a)	Using all available plots and residual statistics, try to identify potential influential cases. Explain it. 
+
+```{r}
+# Save residuals as a separate object
+res <- resid(model2) 
+
+# Residuals vs. fitted plot
+plot(fitted(model2), res, main = "Residuals vs. fitted plot of model 2") ### funnel
+abline(0,0) #add a horizontal line at 0 
+```
+
+### There might be subsamples in the data. Gender subgroups?
+
+
+```{r}
+# Standardized residuals
+rstandard(model2)
+```
+
+
+```{r}
+### Create a new column
+anxietyClean$Res <- rstandard(model2)
+attributes(anxietyClean$Res)$label <- "Standardized residual"
+```
+
+### +-3 as a rule of thumb for std residuals
+### Should we consider respondents 101, 38, 39 for a removal?
+
+
+```{r}
+# Look at standardized residuals distribution
+hist(anxietyClean$Res, main = "Standardized residuals distribution")
+```
+
+### 95% should lie within +-2 and 99% within +-2.5
+
+
+```{r}
+# Calculate the share of values beyond +-2
+length(anxietyClean$Res[anxietyClean$Res < -2 | anxietyClean$Res > 2]) / length(anxietyClean$Res) * 100
+```
+
+```{r}
+# Calculate the share of values beyond +-2.5
+length(anxietyClean$Res[anxietyClean$Res < -2.5 | anxietyClean$Res > 2.5]) / length(anxietyClean$Res) * 100
+```
+
+
+```{r}
+# Build a Q-Q plot for residuals
+qqPlot(res, main = "Q-Q plot of model 2 residuals")
+```
+
+### Normality assumption is not important for estimating coefficients
+### Large enough sample => CLT
+
+
+b)	Using VIF and/or Tolerance statistics, conclude on multicollinearity of the predictors.
+
+
+```{r}
+# Correlation matrix
+cor.plot(anxietyClean[c("Revise", "Anxiety")])
+```
+
+
+```{r}
+# A function to get VIF's and Tolerance statistics
+ols_vif_tol(model2)
+```
+
+### Tolerance > 0.2 AND VIF < 10 AND average VIF not substantially larger than 1 => OK
+
+
+c)	Using test plots or any other technique you know, check assumptions of errors independence, linearity and homoscedasticity of the residuals. Comment on that.
+
+```{r}
+# Histogram of residuals coefficients
+h <- hist(res, main = "Histogram of model 2 residuals", xlab = "Residuals")
+xfit <- seq(min(res), max(res), length = 100)
+yfit <- dnorm(xfit, mean = mean(res), sd = sd(res))
+yfit <- yfit * diff(h$mids[1:2]) * length(res)
+
+lines(xfit, yfit, col = "blue", lwd = 2)
+```
+
+
+
+# Q5. Dummy regression
+
+```{r}
+# Scatterplots
+colors <- c("red", "blue")
+
+plot(Exam ~ Anxiety, data = anxiety, main = "Scatter plot of exam score and anxiety level", col = colors)
+abline(lm(Exam ~ Anxiety, data = anxiety), col = "red")
+legend("bottomleft", legend = c("female", "male"), fill = colors)
+
+plot(Exam ~ Revise, data = anxiety, main = "Scatter plot of exam score and revise hours spent", col = colors)
+abline(lm(Exam ~ Revise, data = anxiety), col = "red")
+legend("bottomleft", legend = c("female", "male"), fill = colors)
+
+plot(Anxiety ~ Revise, data = anxiety, main = "Scatter plot of anxiety level and revise hours spent", col = colors)
+abline(lm(Anxiety ~ Revise, data = anxiety), col = "red")
+legend("bottomleft", legend = c("female", "male"), fill = colors)
+```
+
+
+```{r}
+# Build model 3
+model3 <- lm(Exam ~ Anxiety + Revise + Gender, data = anxietyClean)
+
+# Model 3 summary
+summary(model3)
+```
+
+
+```{r}
+# Residuals vs. fitted plot
+plot(fitted(model3), resid(model3), main = "Residuals vs. fitted plot of model 3") ### funnel
+abline(0,0) #add a horizontal line at 0 
+```
+
+
+```{r}
+# Change statistics (nested model test)
+anova(model2, model3)
+```
+```{r}
+# A function to get VIF's and Tolerance statistics
+ols_vif_tol(model3)
+```
+

@@ -1,0 +1,179 @@
+---
+title: "QMBR Seminar 2"
+author: "Instructor: E.D. Starshov (e.starshov@gsom.spbu.ru)"
+topics: "Topic 3. Correlation and regression analysis."
+data: "Exam Anxiety 2022.sav"
+---
+
+# Quantitative methods of business research. Seminar 2. #
+
+The goal of the second seminar is to study the procedure of correlation and regression analysis in R while applying to dataset. 
+
+Let’s look at the example data relating to exam anxiety: a psychologist was interested in the effects of exam stress and revision on exam performance. She had devised and validated a questionnaire to assess state anxiety relating to exams. This scale produced a measure of anxiety scored out of 100. Anxiety was measured before an exam, and the percentage mark of each student on the exam was used to assess the exam performance. She also measured the number of hours spent revising.
+
+For the seminar we will follow the script below, and it will be the same for the group home task (although the datafile will be different).
+
+
+```{r}
+install.packages("correlation")
+install.packages("knitr")
+install.packages("olsrr")
+```
+
+
+```{r}
+# Activate packages
+library(haven) # Loading SPSS files
+library(psych) # describe
+library(car) # qqPlot
+library(correlation) # correlation
+library(knitr) #kable
+library(olsrr)
+```
+
+
+```{r}
+# Set working directory
+setwd("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/Seminar 2")
+
+# Load the data
+anxiety <- read_sav("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/data/anxiety.sav") # Specify your own path
+View(anxiety)
+```
+
+# Q1. Getting acquainted with the data.
+
+```{r}
+# Exam distribution
+hist(anxiety$Exam)
+#hist(anxiety$Anxiety)
+#hist(anxiety$Revise)
+
+describe(anxiety$Exam)
+```
+
+
+```{r}
+# Gender distribution
+attributes(anxiety$Gender)$labels
+table(anxiety$Gender)
+```
+
+
+# Q2. Check linear model assumptions and try to spot potential sources of bias for the variables under analysis (Exam, Revise, Anxiety).
+
+```{r}
+# Boxplots
+boxplot(anxiety$Exam, main = "Exam boxplot")
+boxplot(anxiety$Revise, main = "Revise boxplot")
+boxplot(anxiety$Anxiety, main = "Anxiety boxplot")
+```
+
+### What threshold values to choose? Always remember research question. Don't forget to look at the data.
+
+```{r}
+# Removing potential outliers
+anxietyClean <- anxiety[anxiety$Anxiety >= 10, ]
+anxietyClean <- anxietyClean[anxietyClean$Revise <= 90, ]
+```
+
+```{r}
+# Q-Q plots
+qqPlot(anxietyClean$Exam, main = "Exam Q-Q plot")
+qqPlot(anxietyClean$Revise, main = "Revise Q-Q plot")
+qqPlot(anxietyClean$Anxiety, main = "Anxiety Q-Q plot")
+```
+
+### c)	Using instruments available for you, try to conclude whether the Exam variable relates to other variables in linear way. => Do we build scatterplots? YES
+
+```{r}
+# Built a scatter plot matrix
+pairs(~Exam + Revise + Anxiety, data = anxietyClean)
+```
+
+
+### We cannot make univocal conclusion about linearity. But let's assume so.
+
+```{r}
+# Scatterplots
+plot(Exam ~ Anxiety, data = anxietyClean, main = "Scatter plot of exam score and anxiety level")
+abline(lm(Exam ~ Anxiety, data = anxietyClean), col = "red")
+
+plot(Exam ~ Revise, data = anxietyClean, main = "Scatter plot of exam score and revise hours spent")
+abline(lm(Exam ~ Revise, data = anxietyClean), col = "red")
+
+plot(Anxiety ~ Revise, data = anxietyClean, main = "Scatter plot of anxiety level and revise hours spent")
+abline(lm(Anxiety ~ Revise, data = anxietyClean), col = "red")
+```
+
+
+
+
+
+### d)	What types of correlation coefficients can be used to analyze relationships between these variables? Why? => Pearson if we relax normality assumption. Otherwise Spearman (large enough samples) or Kendall (small samples). If no non-monotonic trends => safely use Pearson. Alsways look at the scatterplot in the first place.
+
+### Do we need to remove outliers based on scatterplots? Yes, sometimes.
+
+# Q3. Apply Pearson’s correlation coefficient to the variables under analysis (Exam, Revise, Anxiety). Conclude on the output.
+
+
+```{r}
+# Correlation plot
+cor.plot(anxietyClean[c("Revise", "Exam", "Anxiety")])
+
+## Counter-conventional coloring?
+```
+
+
+```{r}
+# Correlation significance tests
+cor.test(anxietyClean$Exam, anxietyClean$Revise)
+cor.test(anxietyClean$Exam, anxietyClean$Anxiety)
+cor.test(anxietyClean$Anxiety, anxietyClean$Revise)
+```
+
+
+```{r}
+# Multiple correlation significance tests with one-line code
+correlation(anxietyClean[2:4], include_factors = TRUE, method = "auto")
+```
+
+### e)	What are the effect sizes (r2) for significant correlations? => Do we just square r? YES.
+### f)	Using t-statistic conclude on whether the relationship between exam anxiety and exam performance is stronger than the relationship between revision time and exam performance. => We look at abs. value? YES.
+
+
+# Q5. Apply Spearman’s correlation coefficient to the variables under analysis (Exam, Revise, Anxiety). What can you say about the output?
+
+
+```{r}
+# Correlation plot
+cor.ci(anxietyClean[c("Revise", "Exam", "Anxiety")], method = "spearman")
+```
+
+
+
+```{r}
+# Correlation significance tests
+correlation(anxietyClean[2:4], include_factors = TRUE, method = "spearman")
+```
+
+# Q7. Build the first regression model (model 1) with Exam as the output variable and the variable with the strongest correlation with the Exam variable as the regressor. What can you say about the fit of the first model and about its coefficients?
+
+```{r}
+# Singular linear regression model
+model1 <- lm(Exam ~ Anxiety, data = anxietyClean)
+
+# Model 1 summary
+summary(model1)
+```
+
+
+# OPTIONAL HOMETASK
+
+# Q9. Build two further regression models for men and women. For whom is the absolte effect of anxiety stronger? Check if the regressor coefficients are different.
+
+
+```{r}
+
+```
+

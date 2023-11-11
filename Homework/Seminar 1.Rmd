@@ -1,0 +1,514 @@
+---
+title: "QMBR Seminar 1"
+author: "Instructor: E.D. Starshov (e.starshov@gsom.spbu.ru)"
+topics: "Topic 1. Data gathering and analysis; Topic 2. Hypothesis testing"
+data: "BEEPS_12_inclass.sav"
+---
+
+# Quantitative methods of business research. Seminar 1. ?
+
+The goal of the first seminar is to get familiar with RStudio interface and to learn how to process the data there. You will familiarize yourself with R functions which allow you to check if model assumptions hold and test different hypothesis. 
+We will ?se a pre-made dataset. It is real and interesting data about business environment and enterprise performance in East European countries that was originally collected by the European Bank for Reconstruction and Development (EBRD) and the World Bank Group (t?e World Bank). 
+
+For the seminar we will follow the script below, and it will be similar for the home task (although the datafile and specific questions will be slightly different).
+
+
+
+## Q0. Installing and loading required packages and data for the analys?s
+
+```{r message=FALSE, warning=FALSE}
+# Install packages
+install.packages("haven")
+install.packages("psych")
+install.packages("car")
+install.packages("DescTools")
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# Activate packages
+library(haven) # Loading SPSS ?iles
+library(psych) # describe
+library(car) # qqPlot
+library(DescTools) # DunnettTest
+```
+
+
+```{r}
+# Set working directory
+setwd("C:/user/st049919/Desktop/qmbr")
+
+# Load the data
+beeps12 <- read_sav("data/BEEPS_12_i") # Specify your own path
+Vie??beeps12)
+?``
+
+
+
+## Q1. Getting acquainted with the data.
+
+```{r}
+# b)	Companies from which countries are selected?	
+table(beeps12$cname) # categories and their size
+```
+
+
+```{r}
+# c)	When was this data collected?	
+table(BEEPS_12_inclass$year)
+```
+
+
+```{r}
+? #	Wha? d?es variable own tell you about? What is its type? What is the measurement level?
+table(beeps12$year) 
+```
+
+
+```{r}
+str(beeps12$year) # variable structure
+```
+
+
+```{r}
+attributes(beeps12``````` x = $year) # variable attributes
+```
+
+
+
+## Q2. Analy?ing for ou?liers and b?ilding graphs
+
+
+```{r}
+# Histogram
+hist(BEEPS_12_inclass$year, main = "Histogram of number of employees")
+```
+
+
+
+```{r}
+# Build a simple boxplot
+boxplot(BEEPS_12_inclass$employ)
+```
+
+
+```{r}
+# Build a horizontal boxplot
+boxplot(beeps12$employ, ?orizontal = TRUE, main = "B?x plot of number of employess")
+```
+
+Three ways to save graphs:
+1. Print screen
+2. Copypaste the code to the console and run it => Export => Save as image
+3. Using the following code
+
+
+```{r}
+# Code for savin? the plot to a png ?ile
+setwd("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods")
+
+png(file = "beeps12employBoxplot.png", width = 600, height = 350)
+boxplot(beeps12$employ, horizontal = TRUE, main = "Box plot of number of employees")
+dev.off()
+```
+
+
+```{r}
+# Look a? the outli?r values
+boxplot(beeps12$employ, plot = FALSE?$out)
+```
+
+
+
+```{r}
+# Mean of a single variable
+mean(beeps12$employ)
+```
+
+
+```{r}
+# Standard deviation of a single variable
+sd(beeps12$employ)
+```
+
+
+```{r}
+# Use "describe" function from "psych" packa?e to get ?oth
+describe(beeps12$employ)
+```
+
+
+### Removin? outliers
+
+
+```{r}
+# Save outlier values as a separate object
+outliers <- boxplot(beeps12$employ, plot = FALSE)$out
+```
+
+
+```{r}
+# Create a copy of the dataset without outliers
+beeps12clean <- beeps12?[-which(?eeps12$employ %in% outliers), ]
+```
+
+
+For begin?ers it can be easier to find the smallest value among outliers and filter the dataset.
+
+```{r}
+# Find the smallest outlier
+min(boxplot(beeps12$employ, plot = FALSE)$out)
+```
+
+
+```{r}
+# Save filtered ?ataset 
+?eeps12clean <- beeps12[beeps12$employ < 76, ]
+`?`
+
+
+```{r}
+# Build a simple boxplot
+boxplot(beeps12clean$employ,  main = "Box plot of number of employees")
+```
+
+
+### QUESTION TO DISCUSS: What else should I consider when choosing the threshold valu??
+
+Let u? consider 125 as the threshold value.
+
+```{r}
+#?Save filtered dataset 
+beeps12clean <- beeps12[beeps12$employ <= 125, ]
+```
+
+
+```{r}
+# Build a simple boxplot
+boxplot(beeps12clean$employ)
+```
+
+
+```{r}
+# Look at new descriptive statistics
+describe(b?eps12cle?n$employ)
+```
+
+
+
+## Q3. Normality check
+
+### QU?STION TO DISCUSS: What is central limit theorem? If we have more than 30 observations, does it mean that our distribution is normal?
+
+Let’s now test the assumption for future tests – the no?malit? assumpt?on. 
+Let’s first do that using graph? 
+
+```{r}
+# Q-Q plot
+qqnorm(beeps12clean$employ, main = "QQ plot of number of employees")
+qqline(beeps12clean$employ, col = "steelblue", lwd = 2)
+```
+
+
+```{r}
+# A simpler code using a command from "c?r" packa?e
+qqPlot?beeps12clean$employ, main = "QQ plot o? number of employees")
+```
+
+
+Evaluate Skewness and Kurtosis for the variable employ. 
+
+
+```{r}
+# You can evalueate skewness and kurtosis in "describe" output
+describe(beeps12clean$employ)
+```
+
+
+*More?info on ?esting n?rmality on skewness and kurtosis: http?://imaging.mrc-cbu.cam.ac.uk/statswiki/FAQ/Simon*
+
+Another way to test normality is to use Kolmogorov Smirnov test. Do this again for the variable employ. 
+
+```{r}
+# Kolmogorov-Smirnov test
+ks.test(b?eps12cle?n$employ? "pnorm")
+```
+
+```{r}
+# Shapiro-Wilk t?st
+shapiro.test(beeps12clean$employ)
+```
+It might be worth to reconstruct the histogram.
+
+```{r}
+# Histogram
+hist(beeps12clean$employ, main = "Histogram of number of employees")
+```
+
+
+Let’s now ?eparately t?st hypot?eses about different countries. To ?o that you need to split the file into groups by country name.
+
+```{r}
+# Create two separate R objects corresponding to each subsample
+beeps12clean1 <- beeps12clean[beeps12clean$cname == "Country 1",?]
+beeps12cl?an2 <- b?eps12clean[beeps12clean$cname == "C?untry 2", ]
+```
+
+
+
+## Q4. Use an appropriate test and check if the mean number of full-time employees working in Country 1 in 2012 is equal to 25 people. How about Country 2?
+
+### First describe vari?ble employ ?or two d?fferent countries (check for mean, ?edian, standard deviation). 
+
+```{r}
+# Describe two subsamples
+
+## Country 1
+describe(beeps12clean1$employ)
+```
+
+
+```{r}
+## Country 2
+describe(beeps12clean2$employ)
+```
+
+
+```{r}
+# Build box plots for?both countr?es
+boxpl?t(employ ~ cname, data = beeps12cle?n)
+```
+
+```{r}
+# Build histograms for both countries
+
+## Country 1
+hist(beeps12clean1$employ)
+```
+
+
+```{r}
+## Country 2
+hist(beeps12clean2$employ)
+```
+
+```{r}
+# Kolmogorov-Smirnov test
+
+## Country 1
+?s.test(beep?12clean1?employ, "pnorm")
+```
+
+
+```{r}
+## Co?ntry 2
+ks.test(beeps12clean2$employ, "pnorm")
+```
+
+
+```{r}
+# Levene's test
+leveneTest(employ ~ cname, data = beeps12clean)
+```
+
+NOTE: If there is a stat. difference, categorical variable can be later?used as con?rol vari?ble, e.g., in regression analysis.
+?
+### Now let's move on to the tests.
+
+Normality assomption can be relaxed for one-sample t-tests (when we compare the mean to a specific value).
+
+```{r}
+# (Parametric) t-test for country 1
+t.test(bee?s12clean1$e?ploy, mu?= 25)
+```
+
+
+```{r}
+# (Non-parametri?) Mann-Whitney test for country 2
+t.test(beeps12clean2$employ, mu = 25)
+```
+*More info on t-test and its types: https://www.scribbr.com/statistics/t-test/*
+
+
+## Q5. Use an appropriate test and test i? the averag? number ?f full-time employees working in Co?ntry 1 in 2012 and the similar number in Country 2 are equal.
+
+
+```{r}
+# (Parametric) T-test for comparing means of both countries
+t.test(beeps12clean1$employ,  beeps12clean2$employ, var.equal = TRUE?
+```
+
+
+```{?}
+# Mann?Whitney non-parametric test for com?aring means of both countries
+wilcox.test(beeps12clean1$employ, beeps12clean2$employ)
+```
+
+
+```{r}
+# It might be worth to reconstruct the box plots for both countries
+boxplot(employ ~ cname, data = b?eps12clean)?```
+
+## ?6. Use an appropriate test and test?if the average number of full-time employees working in 2012 doesn't differ for companies with different ownership. 
+
+
+### First test ANOVA assumptions
+
+#### Variance homogeneity
+
+```{r}
+# Levene's t?st
+leveneTe?t(employ?~ own, data = beeps12clean)
+```
+
+Th?s happens because R treats own variable as quantitative. We need to convert it into categorical:
+
+```{r}
+# Factorize variable
+beeps12clean$own <- as.factor(beeps12clean$own)
+```
+
+
+```{r}
+# Levene's t?st
+leveneTe?t(employ?~ own, data = beeps12clean)
+```
+
+
+#?## Normal distribution
+
+```{r}
+# Kolmogorov - Smirnov test and histograms
+
+## 1
+ks.test(beeps12clean$employ[beeps12clean$own == 1], "pnorm") # Instead of creating new objects we may use filters
+hist(?eeps12clean?employ[b?eps12clean$own == 1])
+```
+
+
+```{r}
+?# 2
+ks.test(beeps12clean$employ[beeps12clean$own == 2], "pnorm")
+hist(beeps12clean$employ[beeps12clean$own == 2])
+```
+
+
+```{r}
+## 3
+ks.test(beeps12clean$employ[beeps12clean$own == 3], "pnorm")
+hist(b?eps12clean$?mploy[be?ps12clean$own == 3])
+```
+
+
+Which te?t should we use?
+* Equal var & normality => ANOVA
+* Non-equal var => Welch ANOVA
+* Non-normality => Kruskal-Wallis H Test
+
+Let's do all and check the results.
+
+```{r}
+# ANOVA: statistical test on equ?lity of the?populati?n means 
+
+# Compute the analysis of?variance
+res.aov <- aov(employ ~ own, data = beeps12clean)
+
+# Summary of the analysis
+summary(res.aov)
+```
+
+
+```{r}
+# Welch's ANOVA
+oneway.test(employ ~ own, data = beeps12clean, var.equal = TRUE)
+``?
+
+
+```{r}
+#?Kruskal-?allis test
+kruskal.test(employ ~ ow?, data = beeps12clean)
+```
+
+### Post-hoc tests
+
+Which test should we use?
+* Equal var: Tuckey test
+* Non-equal var: Dunnett's test
+
+
+```{r}
+# Tuckey test
+TukeyHSD(res.aov)
+```
+
+
+```{r}
+# Dunnett's te?t
+DunnettTe?t(x = be?ps12clean$employ, g = beeps12clean$?wn)
+```
+
+
+## Q7. Creating new variables
+
+Let’s modify some variables to make them more useful for analysis. 
+
+```{r}
+# Create a new variable by adding up two
+beeps12$percexport <- beeps12$q14b +?beeps12$q14c 
+?``
+
+Next?we turn to another Transform pro?edure subroutine, called Recode. This procedure allows us to create a new variable by recoding scores on another variable. 
+
+Use this procedure to convert the continuous variable percexport into the ?ategorical var?able exp?rter. 
+•	If a company’? percexport score is 50 or lower, then that score will be transformed to a value of 1 on the new exporter variable (i.e., company will be placed in the low exporting category)
+•	If a company�?s percexport score is 51 ?r higher? then that score wil? be transformed a value of 2 on the new exporter variable (i.e., company will be placed in the low exporting category)
+
+
+```{r}
+# Create a new categorical variable
+beeps12$exporter <- as.factor(ifelse?beeps12$percexport <= 50,?1, 2))
+`?`
+
+
+```{r}
+# Chack t?e proportions of categories
+table(beeps12$exporter)
+```
+
+Is everything all right with these numbers?
+
+
+```{r}
+# Look at the percexport variable
+table(beeps12$percexport)
+```
+
+
+We have 9 observations w?th negative value which i? nonsens?!
+But more important?y, we have non-importers, which should be categorized separately.
+Let's delete outliers and recode the exporter variable:
+
+
+```{r}
+# Recode exporter variable
+beeps12new <- beeps12[beeps12$percexport >? 0, ]
+beeps12new$exporter?<- as.fa?tor(ifelse(beeps12ne?$percexport == 0, 0, 
+                                        ifelse(beeps12new$percexport <= 50, 1, 2)))
+```
+
+
+```{r}
+# Check new categories and their size
+table(beeps12new$exporter)
+```
+
+
+## Q8. Che?king on total sales (inde?endet wo?k)
+
+Now let’s c?eck total sales variable: is it normally distributed, are there any outliers, think of some tests that can be interesting for sales comparison in this dataset (2 different tests).  
+
+
+```{r}
+### Type ?our code here
+```
+

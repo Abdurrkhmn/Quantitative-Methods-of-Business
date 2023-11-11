@@ -1,0 +1,112 @@
+---
+title: "Home Task 2"
+author: "Abdurrahman"
+date: "2023-11-10"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r warning=FALSE}
+# Activate packages
+library(haven) # Loading SPSS files
+library(psych) # describe
+library(car) # qqPlot
+library(olsrr) # ols_vif_tol
+library(corrplot) #cor.plot
+library(labelled) # label
+```
+
+
+
+```{r message=FALSE, warning=FALSE}
+# Set working directory
+setwd("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/Homework/Task2")
+
+# Load the data
+anxiety <- read_sav("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/data/task2.sav") # Specify your own path
+
+```
+
+
+```{r}
+# Exam distribution
+hist(task2$Asocial_Behavior)
+#hist(anxiety$Anxiety)
+#hist(anxiety$Revise)
+
+describe(task2$Asocial_Behavior)
+```
+```{r}
+# Sibling distribution
+attributes(task2$Asocial_Behavior)$labels
+table(task2$Asocial_Behavior)
+```
+
+
+```{r}
+# Boxplots
+boxplot(task2$Asocial_Behavior, main = "Asocial_Behavior boxplot")
+boxplot(task2$Parenting_Style , main = "Parenting_Style boxplot")
+boxplot(task2$Games, main = "Games boxplot")
+boxplot(task2$Sibling_Behavior, main = "Sibling_Behavior boxplot")
+
+```
+
+
+
+```{r}
+# Q-Q plots
+qqPlot(task2$Asocial_Behavior, main = "Asocial_Behavior Q-Q plot")
+qqPlot(task2$Parenting_Style, main = "Parenting_Style Q-Q plot")
+qqPlot(task2$Games, main = "Games Q-Q plot")
+qqPlot(task2$Sibling_Behavior, main = "Sibling_Behavior Q-Q plot")
+```
+
+```{r}
+# Built a scatter plot matrix
+pairs(~Asocial_Behavior + Parenting_Style + Games + Sibling_Behavior, data = task2)
+```
+```{r}
+# Correlation plot
+cor.plot(task2[c("Asocial_Behavior", "Parenting_Style", "Games")])
+
+## Counter-conventional coloring?
+```
+
+```{r}
+# Correlation significance tests
+cor.test(task2$Parenting_Style, task2$Asocial_Behavior)
+cor.test(task2$Parenting_Style, task2$Games)
+cor.test(task2$Games, task2$Asocial_Behavior)
+```
+
+```{r}
+correlation(task2[2:4], include_factors = TRUE, method = "auto")
+```
+
+```{r}
+# Correlation significance tests
+correlation(task2[2:4], include_factors = TRUE, method = "spearman")
+```
