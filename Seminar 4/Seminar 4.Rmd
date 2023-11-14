@@ -1,0 +1,405 @@
+---
+title: "QMBR Seminar 4"
+author: "Instructor: E.D. Starshov (e.starshov@gsom.spbu.ru)"
+topics: "Topic 4. Cluster and factor analysis."
+data: "SAQ.sav"
+---
+
+# Quantitative methods of business research. Seminar 4.
+
+The goal of the fourth seminar is to study the procedures of exploratory factor analysis and clustering. For the factor analysis, use dataset SAQ.sav (and SAQ (Item 3 Reversed).sav). It is devoted to questionnaire for measuring 'SPSS anxiety' and it is designed to measure various aspects of students' anxiety towards learning statistics, the SAQ, and includes 23 questions. Each question was a statement followed by a 5-point Likert scale: 'strongly disagree', 'disagree', 'neither agree nor disagree', 'agree' and 'strongly agree' (SD, D, N, A, and SA, respectively). The questionnaire should help to know whether anxiety about statistics could be broken down into specific forms of anxiety. In other words, what latent variables contribute to anxiety about statistics? It includes 2571 completed questionnaires and this example is fictitious. To apply cluster analysis, use BurgersOriginal.sav. This data set contains information on all kinds of characteristics of burgers from different restaurants.
+
+```{r}
+# Install packages
+# install.packages("GPArotation")
+```
+
+```{r message=FALSE, warning=FALSE}
+# Activate packages
+library(haven) # Loading SPSS files
+library(psych) # describe, KMO
+library(corrplot) #cor.plot
+library(openxlsx) # write Excel files
+library(GPArotation) # oblimin
+library(dplyr) # rename
+```
+
+```{r message=FALSE, warning=FALSE}
+# Set working directory
+setwd("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/Seminar 4")
+
+# Load the data
+saq <- read_sav("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/Seminar 4/SAQ.sav") # Specify your own path
+```
+
+```{r}
+# Look at the data
+View(saq)
+```
+
+```{r}
+# Let's give the columns more meaningful names
+colnames(saq)<- c("statCry", "friendsLaugh", "sdExcite", "pearsonAttacks", "notUndStat", "litExpComp", "allCompHate", "mathNotGood", "friendsBetterStat", "compForGames", "schoolMathBad", "rMakesStatWorse", "CompIncompDamage", "compMinds", "compGetMe", "weepCenTendency", "comaEquation", "rCrashes", "rEverybodyLooksAtMe", "eigenCantSleep", "fearNormalDist", "friendsBetterR", "statGoodNerd")
+```
+
+```{r}
+# Save column labels as a separate R object
+l <- lapply(saq, attr, "label") # Gives you list of the labeled variables
+l <- gsub("SPSS", "R", l)
+l <- as.data.frame(l, stringsAsFactors = F) # Convert list to dataframe
+```
+
+# Q1. Preliminary analysis of correlations.
+
+```{r}
+# Check missing values
+colSums(is.na(saq))
+
+cat("Total number of missing values in the data set: ", sum(is.na(saq))) # concatenate and print
+```
+
+```{r}
+# Correlation (R-) matrix
+cor.plot(saq, upper = F)
+```
+
+```{r}
+# R-matrix with sorting (angular order of eigenvectors)
+cm <- cor(saq)
+corrplot(cm, method = "pie", type = "lower", order = "AOE") # try various methods
+```
+
+```{r}
+# Weak correlations
+cm < 0.3
+```
+
+```{r}
+# Show insignificant correlations
+pval <- cor.ci(saq, plot = F)
+round(subset(pval$ci, p >= 0.05, select = p), 2)
+```
+
+```{r}
+# Strong correlations
+max(cm[cm < 1])
+min(cm)
+```
+
+```{r}
+# R-matrix determinant
+det(cm)
+```
+
+```{r}
+# Bartlett’s Test of Sphericity
+cortest.bartlett(saq)
+
+
+### PURPOSE OF BARTLETTS
+```
+
+### Are there any variables that may cause problems? Should you exclude any variables before procced with factor analysis?
+
+# Q2. Sampling adequacy for multiple and individual variables.
+
+```{r}
+# Kaiser-Meyer-Olkin (KMO) to measure sampling adequacy
+KMO(cm)
+```
+
+### Rule of thumb 1: Overall MSA \> 0.6 =\> OK
+
+### Rule of thumb 2: MSA for each item \> 0.5 =\> OK
+
+```{r}
+# In case you would like to get rid of variables with insufficient MSA
+saq2 <- saq[, KMO(saq)$MSAi > 0.80] # Question 23 is removed; you may try various threshold values
+```
+
+# Q3. Factor extraction.
+
+```{r}
+# Check eigenvalues
+ev <- eigen(cor(saq)) # get eigenvalues
+ev$values
+
+### How many factors should we keep according to Kaiser's criterion?
+```
+
+```{r}
+# You may use a little bit of programming to get a nice output
+cat("According to Kaiser's criterion we should keep", length(ev$values[ev$values > 1]), "factors.")
+```
+
+```{r}
+# You may even create a function
+Kaiser <- function(df){
+  ev <- eigen(cor(df))
+  cat("According to Kaiser's criterion we should keep", 
+      length(ev$values[ev$values > 1]), 
+      "factors.")
+}
+
+# Run the newly created function
+Kaiser(saq) # You may use it on other datasets
+```
+
+```{r}
+# Communalities (h2)
+com <- round(smc(saq), 2)
+
+com
+### h2 < 0.4 is considered low
+### h2 > 0.7 => there should not be differences btw FA & PCA
+```
+
+```{r}
+# Scree plot
+scree(saq)
+
+### Find point(s) of inflection
+### SEE LECTURE SLIDES
+```
+
+# Q4. Factor rotation.
+
+## Orthogonal rotation
+
+```{r}
+# Perform factor analysis with orthogonal rotation
+fa1 <- factanal(saq, factors = 4, scores = c("none"), rotation = "varimax")
+print(fa1, digits=3, cutoff=0.3, sort=F)
+#you can use 
+### Rotated factor matrix
+```
+
+## Oblique rotation
+
+```{r}
+# Perform factor analysis with oblique rotation
+fa2 <- factanal(saq, factors = 4, scores = c("none"), rotation = "oblimin")
+print(fa2, digits = 3, cutoff = 0.3, sort = F)
+
+# Create a data frame of factor loadings
+loadings <- round(fa2$loadings[ 1:nrow(fa1$loadings),], 3)
+loadings <- data.frame(loadings)
+loadings <- cbind(l, loadings)
+loadings <- rename(loadings, Question = l)
+
+# Save it as an Excel file
+setwd("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/Seminar 4")
+write.xlsx(loadings, "faq_loadings.xlsx")
+```
+
+### What rotation type to choose? Are the factors related to each other?
+
+# Q5. Reliability analysis and final reports.
+
+```{r}
+# Cronbach’s alpha of the whole dataset
+summary(psych::alpha(saq))
+```
+
+```{r}
+# Create subsamples corresponding to each factor
+saq_f1 <- saq[c("statCry", "fearNormalDist", "pearsonAttacks", "weepCenTendency", "rMakesStatWorse", "eigenCantSleep", "sdExcite", "notUndStat")]
+saq_f2 <- saq[c("litExpComp", "rCrashes", "CompIncompDamage", "allCompHate", "compMinds", "compForGames", "compGetMe")]
+saq_f3 <- saq[c("mathNotGood", "schoolMathBad", "comaEquation")]
+saq_f4 <- saq[c("friendsBetterStat", "friendsLaugh", "friendsBetterR", "rEverybodyLooksAtMe", "statGoodNerd")]
+```
+
+```{r}
+# Cronbach’s alpha of the whole data set
+summary(psych::alpha(saq, check.keys = T))
+```
+
+```{r}
+# Cronbach’s alpha of variables of factor 1
+psych::alpha(saq_f1, check.keys = T)
+```
+
+### Look at the alpha value if an item is removed.
+
+### Reversed items
+
+```{r}
+# Correlation plot of variables of factor 1
+cor.plot(saq_f1)
+```
+
+### Check correlations. If variables are poorly correlated than what?
+
+```{r}
+# Cronbach’s alpha of variables of factor 2
+psych::alpha(saq_f2, check.keys = T)
+```
+
+```{r}
+# Correlation plot of variables of factor 2
+cor.plot(saq_f2)
+```
+
+```{r}
+# Cronbach’s alpha of variables of factor 3
+psych::alpha(saq_f3, check.keys = T)
+```
+
+```{r}
+# Correlation plot of variables of factor 3
+cor.plot(saq_f3)
+```
+
+```{r}
+# Cronbach’s alpha of variables of factor 4
+psych::alpha(saq_f4, check.keys = T)
+```
+
+### What do we do if alpha \< 0.6? No single answer.
+
+```{r}
+# Correlation plot of variables of factor 4
+cor.plot(saq_f4)
+```
+
+# Cluster Analysis
+
+```{r message=FALSE, warning=FALSE}
+# Activate packages
+library(NbClust) # Function NbClust
+library(cluster)
+library(factoextra)
+library(tidyverse)
+library(ggpubr)
+```
+
+```{r message=FALSE, warning=FALSE}
+# Set working directory
+setwd("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/Seminar 4")
+
+# Load the data
+burgers <- read_sav("D:/GSOM/GraphicalDataAnalysis/Quantitave Methods/Seminar 4/BurgersOriginal.sav") # Specify your own path
+```
+
+# Q6. The task is to cluster burgers using Calories, Sodium, Total Fat, and Sugars. At first standardize the values of the variables.
+
+```{r}
+# Descriptive statistics
+describe(burgers[4:14])
+```
+
+```{r}
+# Create a new object that consists of standardized variables for clusterization
+vars <- scale(burgers[c("Calories", "Sodium_mg", "TotalFat_g")])
+```
+
+```{r}
+# Check indices to determine the best number of clusters
+NbClust(data = vars, distance = "euclidean", method = "kmeans", index = "all", min.nc = 2, max.nc = 10)
+```
+
+# Q7. Apply K-means with 3 clusters and 10 iterations. Use Sandwich values as labels. How many clusters should be built according to 30 indices?
+
+```{r}
+# Compute k-means with k = 3
+set.seed(100)
+km.res <- kmeans((vars), 3, iter.max = 10)
+
+# Look at the results
+km.res
+```
+
+```{r}
+# Plot final cluster centers
+barplot(t(km.res$centers), beside = T, legend.text = colnames(km.res$centers), xlab = "Cluster", ylab = "Standardized value")
+```
+
+### What can you say about the burgers in different clusters?
+
+```{r}
+# Add cluster column
+burgers <- cbind(burgers, kmcl = km.res$cluster)
+```
+
+```{r}
+# Merge information on clusters and interpret it
+c1 <- round(apply(burgers[4:14][burgers$kmcl== 1,], 2, mean), 2)
+c2 <- round(apply(burgers[4:14][burgers$kmcl== 2,], 2, mean), 2)
+c3 <- round(apply(burgers[4:14][burgers$kmcl== 3,], 2, mean), 2)
+
+cc_kmcl <- data.frame(c1, c2, c3)
+View(cc_kmcl)
+```
+
+### ANOVA assumptions?
+
+```{r}
+# ANOVA to compare multiple means
+res.aov <- aov(Sugars_g ~ as.factor(kmcl), data = burgers)
+summary(res.aov)
+```
+
+```{r}
+# Tuckey test
+TukeyHSD(res.aov)
+```
+
+```{r}
+# Normality check
+hist(burgers$Sugars_g)
+qqPlot(burgers$Sugars_g)
+ks.test(burgers$Sugars_g, "pnorm")
+```
+
+```{r}
+# Homogeneity assumptions
+leveneTest(Sugars_g ~ as.factor(kmcl), data = burgers)
+```
+
+### If we relax normality assumption, we can stay with ANOVA. Otherwise we should rely on Kruskal-Wallis test.
+
+```{r}
+# Kruskal-Wallis test
+kruskal.test(Sugars_g ~ as.factor(kmcl), data = burgers)
+```
+
+# Q8. Run Hierarchical Clustering to the same variables. Use Ward's method and Squared Euclidean distance.
+
+```{r}
+# Calculate distances
+dst <- dist(vars, method = "euclidean")
+
+# run AHCA
+hca.res <- hclust(dst, method = "ward.D") # read help on hclust
+```
+
+```{r}
+# plot the dendrogram
+plot(hca.res)
+```
+
+```{r}
+# Add cluster column
+burgers <- cbind(burgers, hca = cutree(hca.res, k = 3))
+```
+
+```{r}
+# Merge information on clusters and interpret it
+c1 <- round(apply(burgers[4:14][burgers$hca== 1,], 2, mean), 2)
+c2 <- round(apply(burgers[4:14][burgers$hca== 2,], 2, mean), 2)
+c3 <- round(apply(burgers[4:14][burgers$hca== 3,], 2, mean), 2)
+
+cc_hca <- data.frame(c1, c2, c3)
+View(cc_hca)
+```
+
+```{r}
+# ANOVA to campare multiple means
+res.aov <- aov(Protein_g ~ as.factor(hca), data = burgers)
+summary(res.aov)
+```
+
+```{r}
+# Tuckey test
+TukeyHSD(res.aov)
+```
